@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Sensor Dashboard</title>
+<style>
+body {
+  margin: 0;
+  padding: 25px;
+  font-family: Arial, sans-serif;
+  background: #0b1120;
+  color: white;
+}
+h1 { color: #38bdf8; }
+p { color: #94a3b8; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+.card {
+  background: #172338;
+  padding: 22px;
+  border-radius: 14px;
+  border: 1px solid #334155;
+}
+.card h3 {
+  color: #94a3b8;
+  font-size: 15px;
+}
+.value {
+  font-size: 30px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+.unit {
+  color: #94a3b8;
+  font-size: 13px;
+}
+#status { color: #fbbf24; }
+</style>
+</head>
+<body>
+<h1>Flight Sensor Dashboard</h1>
+<p>Live ESP32 sensor monitoring</p>
+<p id="status">Connecting to sensors...</p>
+
+<h2>Light Intensity</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Photoresistor</h3>
+    <div class="value" id="light">--</div>
+    <div class="unit">ADC units</div>
+  </div>
+</div>
+
+<h2>Acceleration</h2>
+<div class="grid">
+  <div class="card">
+    <h3>X Axis</h3>
+    <div class="value" id="ax">--</div>
+    <div class="unit">g</div>
+  </div>
+  <div class="card">
+    <h3>Y Axis</h3>
+    <div class="value" id="ay">--</div>
+    <div class="unit">g</div>
+  </div>
+  <div class="card">
+    <h3>Z Axis</h3>
+    <div class="value" id="az">--</div>
+    <div class="unit">g</div>
+  </div>
+</div>
+
+<h2>Angular Velocity</h2>
+<div class="grid">
+  <div class="card">
+    <h3>X Axis</h3>
+    <div class="value" id="gx">--</div>
+    <div class="unit">degrees/second</div>
+  </div>
+  <div class="card">
+    <h3>Y Axis</h3>
+    <div class="value" id="gy">--</div>
+    <div class="unit">degrees/second</div>
+  </div>
+  <div class="card">
+    <h3>Z Axis</h3>
+    <div class="value" id="gz">--</div>
+    <div class="unit">degrees/second</div>
+  </div>
+</div>
+
+<script>
+async function updateData() {
+  try {
+    const response = await fetch('/data');
+    const d = await response.json();
+
+    if (d.error) throw new Error(d.error);
+
+    for (const key of ['light','ax','ay','az','gx','gy','gz']) {
+      document.getElementById(key).textContent = d[key];
+    }
+
+    document.getElementById('status').textContent =
+      'Live data • ' + new Date().toLocaleTimeString();
+    document.getElementById('status').style.color = '#34d399';
+  } catch (e) {
+    document.getElementById('status').textContent =
+      'Waiting for sensor data...';
+    document.getElementById('status').style.color = '#fbbf24';
+  }
+}
+
+updateData();
+setInterval(updateData, 1000);
+</script>
+</body>
+</html>

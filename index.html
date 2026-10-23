@@ -1,122 +1,237 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Flight Sensor Dashboard</title>
-<style>
-body {
-  margin: 0;
-  padding: 25px;
-  font-family: Arial, sans-serif;
-  background: #0b1120;
-  color: white;
-}
-h1 { color: #38bdf8; }
-p { color: #94a3b8; }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
-.card {
-  background: #172338;
-  padding: 22px;
-  border-radius: 14px;
-  border: 1px solid #334155;
-}
-.card h3 {
-  color: #94a3b8;
-  font-size: 15px;
-}
-.value {
-  font-size: 30px;
-  font-weight: bold;
-  overflow-wrap: anywhere;
-}
-.unit {
-  color: #94a3b8;
-  font-size: 13px;
-}
-#status { color: #fbbf24; }
-</style>
-</head>
-<body>
-<h1>Flight Sensor Dashboard</h1>
-<p>Live ESP32 sensor monitoring</p>
-<p id="status">Connecting to sensors...</p>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Sensor Dashboard</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-<h2>Light Intensity</h2>
-<div class="grid">
-  <div class="card">
-    <h3>Photoresistor</h3>
-    <div class="value" id="light">--</div>
-    <div class="unit">ADC units</div>
-  </div>
-</div>
-
-<h2>Acceleration</h2>
-<div class="grid">
-  <div class="card">
-    <h3>X Axis</h3>
-    <div class="value" id="ax">--</div>
-    <div class="unit">g</div>
-  </div>
-  <div class="card">
-    <h3>Y Axis</h3>
-    <div class="value" id="ay">--</div>
-    <div class="unit">g</div>
-  </div>
-  <div class="card">
-    <h3>Z Axis</h3>
-    <div class="value" id="az">--</div>
-    <div class="unit">g</div>
-  </div>
-</div>
-
-<h2>Angular Velocity</h2>
-<div class="grid">
-  <div class="card">
-    <h3>X Axis</h3>
-    <div class="value" id="gx">--</div>
-    <div class="unit">degrees/second</div>
-  </div>
-  <div class="card">
-    <h3>Y Axis</h3>
-    <div class="value" id="gy">--</div>
-    <div class="unit">degrees/second</div>
-  </div>
-  <div class="card">
-    <h3>Z Axis</h3>
-    <div class="value" id="gz">--</div>
-    <div class="unit">degrees/second</div>
-  </div>
-</div>
-
-<script>
-async function updateData() {
-  try {
-    const response = await fetch('/data');
-    const d = await response.json();
-
-    if (d.error) throw new Error(d.error);
-
-    for (const key of ['light','ax','ay','az','gx','gy','gz']) {
-      document.getElementById(key).textContent = d[key];
+  <style>
+    * {
+      box-sizing: border-box;
     }
 
-    document.getElementById('status').textContent =
-      'Live data • ' + new Date().toLocaleTimeString();
-    document.getElementById('status').style.color = '#34d399';
-  } catch (e) {
-    document.getElementById('status').textContent =
-      'Waiting for sensor data...';
-    document.getElementById('status').style.color = '#fbbf24';
-  }
-}
+    body {
+      margin: 0;
+      padding: 25px;
+      font-family: Arial, sans-serif;
+      background: #0b1120;
+      color: #f1f5f9;
+    }
 
-updateData();
-setInterval(updateData, 1000);
-</script>
+    header, main {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    header {
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+    }
+
+    #status {
+      display: inline-block;
+      margin: 12px 0 20px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #422006;
+      color: #fbbf24;
+    }
+
+    .section-title {
+      margin: 28px 0 14px;
+      color: #cbd5e1;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      padding: 22px;
+      background: #151f32;
+      border: 1px solid #29374d;
+      border-radius: 14px;
+    }
+
+    .card h3 {
+      margin: 0 0 20px;
+      color: #94a3b8;
+      font-size: 14px;
+      font-weight: normal;
+    }
+
+    .value {
+      font-size: 30px;
+      font-weight: bold;
+      overflow-wrap: anywhere;
+    }
+
+    .unit {
+      margin-top: 8px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .info {
+      margin-top: 28px;
+      padding: 18px;
+      border-radius: 12px;
+      background: #111c30;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+
+    footer {
+      padding: 28px 0;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Flight Sensor Dashboard</h1>
+    <div class="subtitle">
+      Live light, acceleration and angular velocity monitoring
+    </div>
+  </header>
+
+  <main>
+    <div id="status">Connecting to MQTT broker...</div>
+
+    <h2 class="section-title">Light Intensity</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Photoresistor Reading</h3>
+        <div class="value" id="light">--</div>
+        <div class="unit">ADC units (0–4095)</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Acceleration</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>X Axis</h3>
+        <div class="value" id="ax">--</div>
+        <div class="unit">g</div>
+      </div>
+      <div class="card">
+        <h3>Y Axis</h3>
+        <div class="value" id="ay">--</div>
+        <div class="unit">g</div>
+      </div>
+      <div class="card">
+        <h3>Z Axis</h3>
+        <div class="value" id="az">--</div>
+        <div class="unit">g</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Angular Velocity</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>X Axis</h3>
+        <div class="value" id="gx">--</div>
+        <div class="unit">degrees/second</div>
+      </div>
+      <div class="card">
+        <h3>Y Axis</h3>
+        <div class="value" id="gy">--</div>
+        <div class="unit">degrees/second</div>
+      </div>
+      <div class="card">
+        <h3>Z Axis</h3>
+        <div class="value" id="gz">--</div>
+        <div class="unit">degrees/second</div>
+      </div>
+    </div>
+
+    <div class="info">
+      <strong>About the readings</strong><br>
+      The LDR measures light through its analog reading.
+      The MPU6050 measures acceleration and rotational speed
+      along three axes. Values update whenever new sensor
+      messages arrive from the ESP32.
+    </div>
+
+    <footer>Flight Sensor Monitoring System</footer>
+  </main>
+
+  <script>
+    const broker = "wss://broker.hivemq.com:8884/mqtt";
+    const topic = "flight-monitor-esp32-6f29a1/data";
+
+    const statusBox = document.getElementById("status");
+
+    const client = mqtt.connect(broker, {
+      clientId: "flight_web_" + Math.random().toString(16).slice(2),
+      reconnectPeriod: 3000,
+      connectTimeout: 10000,
+      clean: true
+    });
+
+    client.on("connect", function () {
+      statusBox.textContent = "Connected — subscribing to sensor data";
+      statusBox.style.color = "#6ee7b7";
+      statusBox.style.background = "#064e3b";
+
+      client.subscribe(topic, function (error) {
+        if (error) {
+          statusBox.textContent = "Could not subscribe to sensor data";
+        } else {
+          statusBox.textContent = "Connected — waiting for readings";
+        }
+      });
+    });
+
+    client.on("reconnect", function () {
+      statusBox.textContent = "Reconnecting to broker...";
+      statusBox.style.color = "#fbbf24";
+      statusBox.style.background = "#422006";
+    });
+
+    client.on("offline", function () {
+      statusBox.textContent = "Broker offline";
+    });
+
+    client.on("error", function () {
+      statusBox.textContent = "Connection error — check internet access";
+    });
+
+    client.on("message", function (receivedTopic, message) {
+      if (receivedTopic !== topic) return;
+
+      try {
+        const data = JSON.parse(message.toString());
+
+        for (const key of ["light", "ax", "ay", "az", "gx", "gy", "gz"]) {
+          if (data[key] !== undefined) {
+            document.getElementById(key).textContent = data[key];
+          }
+        }
+
+        statusBox.textContent =
+          "Live data received • " + new Date().toLocaleTimeString();
+        statusBox.style.color = "#6ee7b7";
+        statusBox.style.background = "#064e3b";
+      } catch (error) {
+        statusBox.textContent = "Received data could not be read";
+      }
+    });
+  </script>
 </body>
 </html>
